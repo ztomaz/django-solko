@@ -1,10 +1,13 @@
 # Create your views here.
 from _ast import Is
 import json
+from numpy.distutils.command.scons import scons
 from django.contrib.auth.tests.models import IsActiveTestCase
 
 from django.http import HttpResponse
 from rest_framework.renderers import JSONRenderer
+from obligations.models import Score
+from obligations.views import score_to_dict
 from school.models import Grade
 from subjects.models import Subject, TimeStamp
 from django.contrib.auth.models import User
@@ -116,6 +119,23 @@ def save_or_edit_subject(request, grade_id, subject_id):
     print (subject_to_dict(subject, request.user))
     return JSON_response(subject_to_dict(subject, request.user))
 
+@api_view(['GET', 'POST'])
+@permission_classes((IsAuthenticated,))
+def get_statistics(request, grade_id):
+    r = []
+    try:
+        grade = Grade.objects.get(id=grade_id)
+    except Grade.DoesNotExist:
+        return JSON_response({"status": "error", "message": "something went wrong"})
+
+    user = request.user
+
+    subjects = Subject.objects.filter(grade=grade)
+    for s in subjects:
+        r.append(subject_to_dict_statistics(s, user))
+
+    return JSON_response(r)
+
 
 def subject_to_dict(subject, user):
     print subject.participants.all()
@@ -135,6 +155,30 @@ def subject_to_dict(subject, user):
         "subject_name": subject.name,
         "enrolled":enrolled,
         "times": times
+    }
+
+    return r
+
+
+def subject_to_dict_statistics(subject, user):
+    if subject.participants.all().filter(id=user.id).exists():
+        enrolled = True
+    else:
+        enrolled = False
+
+    personal_scores = []
+    all_scores = []
+    for t in Score.objects.filter(obligation__subject=subject, score__gte=1):
+        all_scores.append(score_to_dict(t))
+        if (t.user == user):
+            personal_scores.append(score_to_dict(t))
+
+    r = {
+        "subject_id": subject.id,
+        "subject_name": subject.name,
+        "enrolled":enrolled,
+        "personal_scores": personal_scores,
+        "all_scores": all_scores
     }
 
     return r
