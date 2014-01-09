@@ -123,8 +123,6 @@ def obligation_to_dict(obligation, user):
 
 
 def score_to_dict(score):
-    print score.score
-
     return {
         "score_id": score.id,
         "score": score.score,
@@ -154,11 +152,11 @@ def get_obligations(request, grade_id):
 
     user = request.user
 
-    obligations = Obligation.objects.filter(subject__grade=grade, date__gte=date, date__lte=date)
+    obligations = Obligation.objects.filter(subject__participants__id__contains=user.id, subject__grade=grade, date__gte=date, date__lte=date)
     for o in obligations:
         if not o.personal:
             r.append(obligation_to_dict(o, user))
-        elif o.personal and o.created_by == request.user:
+        elif o.personal and o.created_by == user:
             r.append(obligation_to_dict(o, user))
     return JSON_response(r)
 
@@ -172,6 +170,7 @@ def get_quick_obligations(request, grade_id):
         grade = Grade.objects.get(id=grade_id)
     except Grade.DoesNotExist:
         return JSON_response({"status": "error", "message": "something went wrong"})
+    print request.POST
     if 'data' in request.POST:
         data = JSON_parse(request.POST.get('data'))
         if 'android_date_time' in data:
@@ -181,15 +180,20 @@ def get_quick_obligations(request, grade_id):
                                 day=obj[2], hour=0, minute=0)
         else:
             return JSON_response({'messege': 'wrong date'})
-    else:
-        date = datetime.datetime.now()
+
 
     user = request.user
 
-    obligations = Obligation.objects.filter(subject__grade=grade, date__gte=date, ).order_by('date')[:3]
+    obligations = Obligation.objects.filter(subject__participants__id__contains=user.id, subject__grade=grade, date__gte=date).order_by('date')
+
+    #obligations = Obligation.objects.filter(subject__grade=grade, date__gte=date, ).order_by('date')[:3]
+
     for o in obligations:
         if not o.personal:
             r.append(obligation_to_dict(o, user))
         elif o.personal and o.created_by == request.user:
             r.append(obligation_to_dict(o, user))
+        if len(r)==3:
+            break
+    print r
     return JSON_response(r)

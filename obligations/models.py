@@ -27,6 +27,11 @@ class Score(models.Model):
     completed = models.IntegerField(default=-1)
     obligation = models.ForeignKey(Obligation)
 
+    def save(self, *args, **kwargs):
+        super(Score, self).save()
+
+    class Meta:
+        unique_together = ('user', 'obligation',)
 
 admin.site.register(Obligation)
 admin.site.register(Score)

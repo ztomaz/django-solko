@@ -143,8 +143,6 @@ def subject_to_dict(subject, user):
         enrolled = True
     else:
         enrolled = False
-
-
     times = []
 
     for t in subject.time.all():
